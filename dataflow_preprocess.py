@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Criteo Classification Sample Preprocessing Runner."""
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -53,7 +53,7 @@ def parse_arguments(argv):
     The parsed arguments as returned by argparse.ArgumentParser.
   """
   parser = argparse.ArgumentParser(
-      description='Runs Preprocessing on the Criteo model data.')
+      description='Runs Transformation on the Outbrain Click Prediction model data.')
 
   parser.add_argument(
       '--project_id', help='The project to which the job will be submitted.')
@@ -137,12 +137,6 @@ def preprocess(pipeline, training_data, eval_data, predict_data, output_dir,
            os.path.join(output_dir, path_constants.RAW_METADATA_DIR),
            pipeline=pipeline))
 
-  # TODO(b/33688220) should the transform functions take shuffle as an optional
-  # argument?
-  # TODO(b/33688275) Should the transform functions have more user friendly
-  # names?
-  #work_dir = os.path.join(output_dir, path_constants.TEMP_DIR)
-  #preprocessing_fn = outbrain_transform.make_preprocessing_fn(frequency_threshold)
   preprocessing_fn = outbrain_transform.make_preprocessing_fn()
   (train_dataset, train_metadata), transform_fn = (
       (train_data, input_metadata)
@@ -153,8 +147,6 @@ def preprocess(pipeline, training_data, eval_data, predict_data, output_dir,
   # of output_dir, which are given by path_constants.TRANSFORM_FN_DIR and
   # path_constants.TRANSFORMED_METADATA_DIR.
   _ = (transform_fn | 'WriteTransformFn' >> tft_beam_io.WriteTransformFn(output_dir))
-
-  # TODO(b/34231369) Remember to eventually also save the statistics.
 
   (evaluate_dataset, evaluate_metadata) = (
       ((evaluate_data, input_metadata), transform_fn)
@@ -215,27 +207,18 @@ def main(argv=None):
   if args.cloud:
     pipeline_name = 'DataflowRunner'
     options = {
-        'job_name': ('cloud-ml-sample-criteo-preprocess-{}'.format(
+        'job_name': ('outbrain-transform-{}'.format(
             datetime.datetime.now().strftime('%Y%m%d%H%M%S'))),
         'temp_location':
             os.path.join(args.output_dir, 'tmp'),
         'project':
             args.project_id,
-
         'max_num_workers':
             1000,
-
-        # TODO(b/35811047) Remove once 0.1.5 is installed on the containers.
-        #'extra_packages': [
-        #    'gs://cloud-ml/sdk/tensorflow_transform-0.1.5-py2-none-any.whl',
-        #],
-
         'setup_file':
              os.path.abspath(os.path.join(
                  os.path.dirname(__file__),
                  'setup.py')),
-
-        # TODO(b/35727492): Remove this.
         
     }
     pipeline_options = beam.pipeline.PipelineOptions(flags=[], **options)
@@ -257,35 +240,3 @@ def main(argv=None):
 
 if __name__ == '__main__':
   main()
-
-
-'''
-head -7000 $LOCAL_DATA_DIR/train_feature_vectors_integral_eval_part-00000_small_10k.csv > $LOCAL_DATA_DIR/train-7k.txt
-tail -3000 $LOCAL_DATA_DIR/train_feature_vectors_integral_eval_part-00000_small_10k.csv > $LOCAL_DATA_DIR/eval-3k.txt
-
-LOCAL_DATA_DIR=/home/gabrielpm/projects/personal/kaggle/outbrain/tf_poc/data
-LOCAL_DATA_PREPROC_DIR=$LOCAL_DATA_DIR/preproc_10k
-python dataflow_preprocess.py --training_data $LOCAL_DATA_DIR/train-7k.txt \
-                     --eval_data $LOCAL_DATA_DIR/eval-3k.txt \
-                     --output_dir $LOCAL_DATA_PREPROC_DIR
-'''
-
-#python dataflow_preprocess.py --training_data LOCAL_DATA_DIR/train_feature_vectors_integral_eval_part-00000_small_1k_headerless.csv --eval_data LOCAL_DATA_DIR/train_feature_vectors_integral_eval_part-00000_small_1k_headerless.csv --output_dir preproc
-
-
-'''
-PROJECT=ciandt-cognitive-sandbox
-GCS_BUCKET=gs://cloudml_experiments
-GCS_PATH=${GCS_BUCKET}/outbrain/wide_n_deep
-GCS_TRAIN_CSV=gs://ciandt-cognitive-kaggle/outbrain-click-prediction/tmp/train_feature_vectors_integral_eval.csv/part-*
-GCS_VALIDATION_CSV=gs://ciandt-cognitive-kaggle/outbrain-click-prediction/tmp/validation_feature_vectors_integral.csv/part-*
-
-python dataflow_preprocess.py --training_data $GCS_TRAIN_CSV \
-                     --eval_data $GCS_VALIDATION_CSV \
-                     --output_dir $GCS_PATH/tfrecords_preproc_with_bins4_no_shuffle \
-                     --project_id $PROJECT \
-                     --cloud
-
---training_data $GCS_PATH/csv/train_feature_vectors_integral_eval.csv \
---eval_data $GCS_PATH/csv/validation_feature_vectors_integral.csv  
-'''

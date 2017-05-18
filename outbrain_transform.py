@@ -11,7 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Schema and tranform definition for the Criteo dataset."""
+
+
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -23,10 +24,43 @@ from tensorflow_transform.tf_metadata import dataset_schema
 
 from trainer.features import LABEL_COLUMN, DISPLAY_ID_COLUMN, AD_ID_COLUMN, IS_LEAK_COLUMN, DISPLAY_ID_AND_IS_LEAK_ENCODED_COLUMN, CATEGORICAL_COLUMNS, DOC_CATEGORICAL_MULTIVALUED_COLUMNS, BOOL_COLUMNS, INT_COLUMNS, FLOAT_COLUMNS, FLOAT_COLUMNS_LOG_BIN_TRANSFORM, FLOAT_COLUMNS_SIMPLE_BIN_TRANSFORM
 
+CSV_ORDERED_COLUMNS = ['label','display_id','ad_id','doc_id','doc_event_id','is_leak','event_weekend',
+              'user_has_already_viewed_doc','user_views','ad_views','doc_views',
+              'doc_event_days_since_published','doc_event_hour','doc_ad_days_since_published',              
+              'pop_ad_id','pop_ad_id_conf',
+              'pop_ad_id_conf_multipl','pop_document_id','pop_document_id_conf',
+              'pop_document_id_conf_multipl','pop_publisher_id','pop_publisher_id_conf',
+              'pop_publisher_id_conf_multipl','pop_advertiser_id','pop_advertiser_id_conf',
+              'pop_advertiser_id_conf_multipl','pop_campain_id','pop_campain_id_conf',
+              'pop_campain_id_conf_multipl','pop_doc_event_doc_ad','pop_doc_event_doc_ad_conf',
+              'pop_doc_event_doc_ad_conf_multipl','pop_source_id','pop_source_id_conf',
+              'pop_source_id_conf_multipl','pop_source_id_country','pop_source_id_country_conf',
+              'pop_source_id_country_conf_multipl','pop_entity_id','pop_entity_id_conf',
+              'pop_entity_id_conf_multipl','pop_entity_id_country','pop_entity_id_country_conf',
+              'pop_entity_id_country_conf_multipl','pop_topic_id','pop_topic_id_conf',
+              'pop_topic_id_conf_multipl','pop_topic_id_country','pop_topic_id_country_conf',
+              'pop_topic_id_country_conf_multipl','pop_category_id','pop_category_id_conf',
+              'pop_category_id_conf_multipl','pop_category_id_country','pop_category_id_country_conf',
+              'pop_category_id_country_conf_multipl','user_doc_ad_sim_categories',
+              'user_doc_ad_sim_categories_conf','user_doc_ad_sim_categories_conf_multipl',
+              'user_doc_ad_sim_topics','user_doc_ad_sim_topics_conf','user_doc_ad_sim_topics_conf_multipl',
+              'user_doc_ad_sim_entities','user_doc_ad_sim_entities_conf','user_doc_ad_sim_entities_conf_multipl',
+              'doc_event_doc_ad_sim_categories','doc_event_doc_ad_sim_categories_conf',
+              'doc_event_doc_ad_sim_categories_conf_multipl','doc_event_doc_ad_sim_topics',
+              'doc_event_doc_ad_sim_topics_conf','doc_event_doc_ad_sim_topics_conf_multipl',
+              'doc_event_doc_ad_sim_entities','doc_event_doc_ad_sim_entities_conf',
+              'doc_event_doc_ad_sim_entities_conf_multipl','ad_advertiser','doc_ad_category_id_1',
+              'doc_ad_category_id_2','doc_ad_category_id_3','doc_ad_topic_id_1','doc_ad_topic_id_2',
+              'doc_ad_topic_id_3','doc_ad_entity_id_1','doc_ad_entity_id_2','doc_ad_entity_id_3',
+              'doc_ad_entity_id_4','doc_ad_entity_id_5','doc_ad_entity_id_6','doc_ad_publisher_id',
+              'doc_ad_source_id','doc_event_category_id_1','doc_event_category_id_2','doc_event_category_id_3',
+              'doc_event_topic_id_1','doc_event_topic_id_2','doc_event_topic_id_3','doc_event_entity_id_1',
+              'doc_event_entity_id_2','doc_event_entity_id_3','doc_event_entity_id_4','doc_event_entity_id_5',
+              'doc_event_entity_id_6','doc_event_publisher_id','doc_event_source_id','event_country',
+              'event_country_state','event_geo_location','event_hour','event_platform','traffic_source']
 
-
-#SINGLE_VALUED_COLUMNS = CATEGORICAL_COLUMNS + BOOL_COLUMNS + INT_COLUMNS + FLOAT_COLUMNS
-
+'''
+TODO: Old layout with CF notebook features ['ibcf_als_score_cf', 'doc_avg_views_by_distinct_users_cf','user_avg_views_of_distinct_docs_cf','doc_views_cf','doc_distinct_users_cf','user_views_cf','user_distinct_docs_cf']
 
 CSV_ORDERED_COLUMNS = ['label','display_id','ad_id','doc_id','doc_event_id','is_leak','event_weekend',
               'user_has_already_viewed_doc','user_views','ad_views','doc_views',
@@ -64,7 +98,7 @@ CSV_ORDERED_COLUMNS = ['label','display_id','ad_id','doc_id','doc_event_id','is_
               'doc_event_entity_id_2','doc_event_entity_id_3','doc_event_entity_id_4','doc_event_entity_id_5',
               'doc_event_entity_id_6','doc_event_publisher_id','doc_event_source_id','event_country',
               'event_country_state','event_geo_location','event_hour','event_platform','traffic_source']
-
+'''
 
 def make_csv_coder(schema, mode=tf.contrib.learn.ModeKeys.TRAIN):
   """Produces a CsvCoder (with tab as the delimiter) from a data schema.
@@ -94,8 +128,6 @@ def make_input_schema(mode=tf.contrib.learn.ModeKeys.TRAIN):
   Returns:
     A `Schema` object.
   """
-  #result = ({} if mode == tf.contrib.learn.ModeKeys.INFER
-  #          else {LABEL_COLUMN: tf.FixedLenFeature(shape=[], dtype=tf.int64)})
 
   result = {}
   result[LABEL_COLUMN] = tf.FixedLenFeature(shape=[], dtype=tf.int64)
@@ -122,19 +154,14 @@ def make_input_schema(mode=tf.contrib.learn.ModeKeys.TRAIN):
 def tf_log2_1p(x):
   return tf.log1p(x) / tf.log(2.0)
 
-#def make_preprocessing_fn(frequency_threshold):
 def make_preprocessing_fn():
-  """Creates a preprocessing function for criteo.
-
-  Args:
-    frequency_threshold: The frequency_threshold used when generating
-      vocabularies for the categorical features.
+  """Creates a preprocessing function 
 
   Returns:
     A preprocessing function.
   """
   def preprocessing_fn(inputs):
-    """User defined preprocessing function for criteo columns.
+    """User defined preprocessing function.
 
     Args:
       inputs: dictionary of input `tensorflow_transform.Column`.
@@ -142,7 +169,7 @@ def make_preprocessing_fn():
       A dictionary of `tensorflow_transform.Column` representing the transformed
           columns.
     """
-    # TODO(b/35001605) Make this "passthrough" more DRY.
+
     result = {LABEL_COLUMN: tft.map(lambda x: tf.expand_dims(x, -1), inputs[LABEL_COLUMN]), 
               DISPLAY_ID_COLUMN: tft.map(lambda x: tf.expand_dims(tf.to_int64(x), -1), inputs[DISPLAY_ID_COLUMN]),
               IS_LEAK_COLUMN: tft.map(lambda x: tf.expand_dims(x, -1), inputs[IS_LEAK_COLUMN]),
@@ -174,9 +201,6 @@ def make_preprocessing_fn():
 
     #result['display_ad_id_key'] = tft.map(lambda display_id, ad_id: tf.multiply(tf.sparse_tensor_to_dense(tf.to_int64(display_id)), int(1e8)) + tf.sparse_tensor_to_dense(tf.to_int64(ad_id)), inputs['display_id'], inputs['ad_id'])
 
-    #result['doc_ad_category_id'] = tft.map(lambda cat1, cat2, cat3: tf.to_int64(tf.sparse_concat(axis=1, sp_inputs=[cat1, cat2, cat3])), 
-    #                                       inputs['doc_ad_category_id_1'], inputs['doc_ad_category_id_2'], inputs['doc_ad_category_id_3'])
-    
 
     for multicategory in DOC_CATEGORICAL_MULTIVALUED_COLUMNS:
       if len(DOC_CATEGORICAL_MULTIVALUED_COLUMNS[multicategory]) == 3:
@@ -185,29 +209,6 @@ def make_preprocessing_fn():
       elif len(DOC_CATEGORICAL_MULTIVALUED_COLUMNS[multicategory]) == 6:
         result[multicategory] = tft.map(lambda col1, col2, col3, col4, col5, col6: tf.to_int64(tf.sparse_concat(axis=1, sp_inputs=[col1, col2, col3, col4, col5, col6])), 
                                         *[inputs[category] for category in DOC_CATEGORICAL_MULTIVALUED_COLUMNS[multicategory]])
-
-
-    #TODO: 
-    #Ref: https://github.com/tensorflow/transform/blob/master/getting_started.md
-    #tf.stack([cat1, cat2, cat3])
-    #[inputs[name] for category in zip(*DOC_CATEGORICAL_MULTIVALUED_COLUMNS['doc_ad_category_id']) ]
-
-    
-    #for multi_category in DOC_CATEGORICAL_MULTIVALUED_COLUMNS:
-    #  result[multi_category] = tft.map(lambda x: tf.stack(x), [inputs[category] for category in DOC_CATEGORICAL_MULTIVALUED_COLUMNS[multi_category] ])      
-    
-
-    #for name in CATEGORICAL_COLUMN_NAMES:
-    #  result[name + '_id'] = tft.string_to_int(
-    #      inputs[name], frequency_threshold=frequency_threshold)
-
-    # TODO(b/35318962): Obviate the need for this workaround on Dense features.
-    # FeatureColumns expect shape (batch_size, 1), not just (batch_size)
-    #result = {
-    #    k: tft.map(lambda x: tf.expand_dims(x, -1), v)
-    #    for k, v in result.items()
-    #}
-
 
     return result
 

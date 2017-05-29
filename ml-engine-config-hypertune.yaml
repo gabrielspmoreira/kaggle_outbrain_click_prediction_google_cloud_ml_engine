@@ -1,0 +1,43 @@
+trainingInput:
+  scaleTier: CUSTOM
+  masterType: complex_model_m
+  workerType: complex_model_m
+  parameterServerType: large_model
+  workerCount: 4
+  parameterServerCount: 2
+  hyperparameters:
+      goal: MAXIMIZE
+      hyperparameterMetricTag: MAP_with_Leaked_Clicks
+      maxTrials: 30
+      maxParallelTrials: 1
+      params:
+        - parameterName: train_batch_size
+          type: DISCRETE
+          discreteValues: [64, 128, 256, 512]          
+        - parameterName: linear_l1_regularization
+          type: DISCRETE
+          discreteValues: [0.01, 0.03, 0.1, 0.3, 1.0, 3.0]   
+        - parameterName: linear_l2_regularization
+          type: DISCRETE
+          discreteValues: [0.0, 0.01, 0.03, 0.1, 0.3, 1.0, 10.0, 30.0]
+        - parameterName: linear_learning_rate
+          type: DISCRETE
+          discreteValues: [0.01, 0.05, 0.1, 0.2]
+        - parameterName: deep_l1_regularization
+          type: DISCRETE
+          discreteValues: [0.01, 0.03, 0.1, 0.3, 1.0, 3.0]   
+        - parameterName: deep_l2_regularization
+          type: DISCRETE
+          discreteValues: [0.01, 0.03, 0.1, 0.3, 1.0]
+        - parameterName: deep_dropout
+          type: DISCRETE
+          discreteValues: [0.0, 0.1, 0.2, 0.3]
+        - parameterName: deep_learning_rate
+          type: DISCRETE
+          discreteValues: [0.01, 0.05, 0.1, 0.2]
+        - parameterName: deep_embedding_size_factor
+          type: DISCRETE
+          discreteValues: [2,4,6,8,10]
+        - parameterName: deep_hidden_units
+          type: CATEGORICAL
+          categoricalValues: ["512 256 128", "512 512 512", "1024 512 256", "1024 1024 1024"]

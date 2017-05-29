@@ -80,14 +80,13 @@ def create_parser():
   parser.add_argument('--transformed_metadata_path', type=str, required=True)
   parser.add_argument('--transform_savedmodel', type=str, required=True)
   parser.add_argument(
-      '--hidden_units',
-      nargs='*',
-      help='List of hidden units per layer. All layers are fully connected. Ex.'
+      '--deep_hidden_units',
+      help='String with hidden units per layer, separated by space. All layers are fully connected. Ex.'
       '`64 32` means first layer has 64 nodes and second one has 32.',
-      default=[100, 50],
-      type=int)
+      default="100 50",
+      type=str)
   parser.add_argument(
-      '--batch_size',
+      '--train_batch_size',
       help='Number of input records used per batch',
       default=512,
       type=int)
@@ -119,6 +118,7 @@ def create_parser():
   parser.add_argument('--deep_l2_regularization', help='L2 Regularization for Deep Model', type=float, default=0.00)
   parser.add_argument('--deep_learning_rate', help='Learning Rate for Deep Model', type=float, default=0.05)
   parser.add_argument('--deep_dropout', help='Dropout regularization for Deep Model', type=float, default=0.1)
+  parser.add_argument('--deep_embedding_size_factor', help='Constant factor to apply on get_embedding_size() = embedding_size_factor * unique_val_count**0.25', type=int, default=6)
   parser.add_argument(
       '--num_epochs', help='Number of epochs', default=5, type=int)
   parser.add_argument(
@@ -134,10 +134,10 @@ def create_parser():
   return parser
 
 
-def get_embedding_size(unique_val_count):
-  return int(math.floor(6 * unique_val_count**0.25))
+def get_embedding_size(const_mult, unique_val_count):
+  return int(math.floor(const_mult * unique_val_count**0.25))
 
-def get_feature_columns(model_type, use_crosses):
+def get_feature_columns(model_type, linear_use_crosses, embedding_size_factor):
   wide_columns = []
   deep_columns = []
 
@@ -146,6 +146,8 @@ def get_feature_columns(model_type, use_crosses):
   event_hour = tf.contrib.layers.sparse_column_with_integerized_feature("event_hour", bucket_size=7, dtype=tf.int64, combiner="sum") #1-6
   event_platform = tf.contrib.layers.sparse_column_with_integerized_feature("event_platform", bucket_size=4, dtype=tf.int64, combiner="sum") #1-3
   traffic_source = tf.contrib.layers.sparse_column_with_integerized_feature("traffic_source", bucket_size=4, dtype=tf.int64, combiner="sum") #1-3
+
+  #TODO: Campaign is usually an important feature. Add this feature in the next feature engineering round
 
   if 'wide' in model_type:
 
@@ -198,7 +200,7 @@ def get_feature_columns(model_type, use_crosses):
                       + float_log_binned_dict.values() \
                       + int_log_binned_dict.values()
 
-    if use_crosses:
+    if linear_use_crosses:
       wide_interaction_features = [
                                  ad_id, doc_id, doc_event_id, ad_advertiser, doc_ad_source_id,
                                  doc_ad_publisher_id, doc_event_publisher_id, doc_event_source_id, 
@@ -260,24 +262,24 @@ def get_feature_columns(model_type, use_crosses):
                      event_platform_ohe,
                      traffic_source_ohe,
                       #Single-valued categories
-                      tf.contrib.layers.scattered_embedding_column('ad_id', size=250000*get_embedding_size(250000), dimension=get_embedding_size(250000), hash_key=HASH_KEY, combiner="sum"),
-                      tf.contrib.layers.scattered_embedding_column('doc_id', size=100000*get_embedding_size(100000), dimension=get_embedding_size(100000), hash_key=HASH_KEY, combiner="sum"),
-                      tf.contrib.layers.scattered_embedding_column('doc_event_id', size=300000*get_embedding_size(300000), dimension=get_embedding_size(300000), hash_key=HASH_KEY, combiner="sum"),
-                      tf.contrib.layers.scattered_embedding_column('ad_advertiser', size=2500*get_embedding_size(2500), dimension=get_embedding_size(2500), hash_key=HASH_KEY, combiner="sum"),
-                      tf.contrib.layers.scattered_embedding_column('doc_ad_publisher_id', size=1000*get_embedding_size(1000), dimension=get_embedding_size(4000), hash_key=HASH_KEY, combiner="sum"),
-                      tf.contrib.layers.scattered_embedding_column('doc_ad_source_id', size=4000*get_embedding_size(4000), dimension=get_embedding_size(4000), hash_key=HASH_KEY, combiner="sum"),                    
-                      tf.contrib.layers.scattered_embedding_column('doc_event_publisher_id', size=1000*get_embedding_size(1000), dimension=get_embedding_size(1000), hash_key=HASH_KEY, combiner="sum"),
-                      tf.contrib.layers.scattered_embedding_column('doc_event_source_id', size=4000*get_embedding_size(4000), dimension=get_embedding_size(4000), hash_key=HASH_KEY, combiner="sum"),
-                      tf.contrib.layers.scattered_embedding_column('event_country', size=300*get_embedding_size(300), dimension=get_embedding_size(300), hash_key=HASH_KEY, combiner="sum"),
-                      tf.contrib.layers.scattered_embedding_column('event_country_state', size=2000*get_embedding_size(2000), dimension=get_embedding_size(2000), hash_key=HASH_KEY, combiner="sum"),
-                      tf.contrib.layers.scattered_embedding_column('event_geo_location', size=2500*get_embedding_size(2500), dimension=get_embedding_size(2500), hash_key=HASH_KEY, combiner="sum"),
+                      tf.contrib.layers.scattered_embedding_column('ad_id', size=250000*get_embedding_size(embedding_size_factor, 250000), dimension=get_embedding_size(embedding_size_factor, 250000), hash_key=HASH_KEY, combiner="sum"),
+                      tf.contrib.layers.scattered_embedding_column('doc_id', size=100000*get_embedding_size(embedding_size_factor, 100000), dimension=get_embedding_size(embedding_size_factor, 100000), hash_key=HASH_KEY, combiner="sum"),
+                      tf.contrib.layers.scattered_embedding_column('doc_event_id', size=300000*get_embedding_size(embedding_size_factor, 300000), dimension=get_embedding_size(embedding_size_factor, 300000), hash_key=HASH_KEY, combiner="sum"),
+                      tf.contrib.layers.scattered_embedding_column('ad_advertiser', size=2500*get_embedding_size(embedding_size_factor, 2500), dimension=get_embedding_size(embedding_size_factor, 2500), hash_key=HASH_KEY, combiner="sum"),
+                      tf.contrib.layers.scattered_embedding_column('doc_ad_publisher_id', size=1000*get_embedding_size(embedding_size_factor, 1000), dimension=get_embedding_size(embedding_size_factor, 4000), hash_key=HASH_KEY, combiner="sum"),
+                      tf.contrib.layers.scattered_embedding_column('doc_ad_source_id', size=4000*get_embedding_size(embedding_size_factor, 4000), dimension=get_embedding_size(embedding_size_factor, 4000), hash_key=HASH_KEY, combiner="sum"),                    
+                      tf.contrib.layers.scattered_embedding_column('doc_event_publisher_id', size=1000*get_embedding_size(embedding_size_factor, 1000), dimension=get_embedding_size(embedding_size_factor, 1000), hash_key=HASH_KEY, combiner="sum"),
+                      tf.contrib.layers.scattered_embedding_column('doc_event_source_id', size=4000*get_embedding_size(embedding_size_factor, 4000), dimension=get_embedding_size(embedding_size_factor, 4000), hash_key=HASH_KEY, combiner="sum"),
+                      tf.contrib.layers.scattered_embedding_column('event_country', size=300*get_embedding_size(embedding_size_factor, 300), dimension=get_embedding_size(embedding_size_factor, 300), hash_key=HASH_KEY, combiner="sum"),
+                      tf.contrib.layers.scattered_embedding_column('event_country_state', size=2000*get_embedding_size(embedding_size_factor, 2000), dimension=get_embedding_size(embedding_size_factor, 2000), hash_key=HASH_KEY, combiner="sum"),
+                      tf.contrib.layers.scattered_embedding_column('event_geo_location', size=2500*get_embedding_size(embedding_size_factor, 2500), dimension=get_embedding_size(embedding_size_factor, 2500), hash_key=HASH_KEY, combiner="sum"),
                       #Multi-valued categories
-                      tf.contrib.layers.scattered_embedding_column('doc_ad_category_id', size=100*get_embedding_size(100), dimension=get_embedding_size(100), hash_key=HASH_KEY, combiner="sum"),
-                      tf.contrib.layers.scattered_embedding_column('doc_ad_topic_id', size=350*get_embedding_size(350), dimension=get_embedding_size(350), hash_key=HASH_KEY, combiner="sum"),
-                      tf.contrib.layers.scattered_embedding_column('doc_ad_entity_id', size=10000*get_embedding_size(10000), dimension=get_embedding_size(10000), hash_key=HASH_KEY, combiner="sum"),
-                      tf.contrib.layers.scattered_embedding_column('doc_event_category_id', size=100*get_embedding_size(100), dimension=get_embedding_size(100), hash_key=HASH_KEY, combiner="sum"),
-                      tf.contrib.layers.scattered_embedding_column('doc_event_topic_id', size=350*get_embedding_size(350), dimension=get_embedding_size(350), hash_key=HASH_KEY, combiner="sum"),
-                      tf.contrib.layers.scattered_embedding_column('doc_event_entity_id', size=10000*get_embedding_size(10000), dimension=get_embedding_size(10000), hash_key=HASH_KEY, combiner="sum"),
+                      tf.contrib.layers.scattered_embedding_column('doc_ad_category_id', size=100*get_embedding_size(embedding_size_factor, 100), dimension=get_embedding_size(embedding_size_factor, 100), hash_key=HASH_KEY, combiner="sum"),
+                      tf.contrib.layers.scattered_embedding_column('doc_ad_topic_id', size=350*get_embedding_size(embedding_size_factor, 350), dimension=get_embedding_size(embedding_size_factor, 350), hash_key=HASH_KEY, combiner="sum"),
+                      tf.contrib.layers.scattered_embedding_column('doc_ad_entity_id', size=10000*get_embedding_size(embedding_size_factor, 10000), dimension=get_embedding_size(embedding_size_factor, 10000), hash_key=HASH_KEY, combiner="sum"),
+                      tf.contrib.layers.scattered_embedding_column('doc_event_category_id', size=100*get_embedding_size(embedding_size_factor, 100), dimension=get_embedding_size(embedding_size_factor, 100), hash_key=HASH_KEY, combiner="sum"),
+                      tf.contrib.layers.scattered_embedding_column('doc_event_topic_id', size=350*get_embedding_size(embedding_size_factor, 350), dimension=get_embedding_size(embedding_size_factor, 350), hash_key=HASH_KEY, combiner="sum"),
+                      tf.contrib.layers.scattered_embedding_column('doc_event_entity_id', size=10000*get_embedding_size(embedding_size_factor, 10000), dimension=get_embedding_size(embedding_size_factor, 10000), hash_key=HASH_KEY, combiner="sum"),
                     ] + float_columns_simple + float_columns_log_01scaled + int_columns_log_01scaled    
 
 
@@ -351,7 +353,7 @@ def map_custom_metric(predictions, labels, weights=None,
   #(assumes that there will be at most 1/4 of distinct partitions in the eval sample 
   #(eg. for a sample size of 3000 samples, there will be at most 750 distinct display_ids,
   # as data was validation data was previously sorted by display_id and the average ads by display_id is under 4)
-  NUM_PARTITIONS=args.eval_batch_size//4   
+  NUM_PARTITIONS=EVAL_BATCH_SIZE//4   
   partitions_preds  = tf.dynamic_partition(predictions, display_ids_idx, NUM_PARTITIONS, name=None)
   partitions_labels = tf.dynamic_partition(labels, display_ids_idx, NUM_PARTITIONS, name=None)
 
@@ -401,7 +403,7 @@ def map_with_leak_custom_metric(predictions, labels, weights=None,
   #(assumes that there will be at most 1/4 of distinct partitions in the eval sample 
   #(eg. for a sample size of 3000 samples, there will be at most 750 distinct display_ids,
   # as data was validation data was previously sorted by display_id and the average ads by display_id is under 4)
-  NUM_PARTITIONS=args.eval_batch_size//4   
+  NUM_PARTITIONS=EVAL_BATCH_SIZE//4   
   partitions_preds  = tf.dynamic_partition(predictions, display_ids_idx, NUM_PARTITIONS, name=None)
   partitions_labels = tf.dynamic_partition(labels, display_ids_idx, NUM_PARTITIONS, name=None)
   partitions_is_leaks  = tf.dynamic_partition(is_leak_tf, display_ids_idx, NUM_PARTITIONS, name=None)
@@ -443,7 +445,9 @@ def map_with_leak_custom_metric(predictions, labels, weights=None,
 def get_experiment_fn(args):
   """Wrap the get experiment function to provide the runtime arguments."""
   #vocab_sizes = get_vocab_sizes()
-  use_crosses = not args.ignore_crosses
+  linear_use_crosses = not args.ignore_crosses
+
+  deep_embedding_size_factor = args.deep_embedding_size_factor
 
   def get_experiment(output_dir):
     """Function that creates an experiment http://goo.gl/HcKHlT.
@@ -454,7 +458,7 @@ def get_experiment_fn(args):
       A `tf.contrib.learn.Experiment`.
     """
 
-    wide_columns, deep_columns = get_feature_columns(args.model_type, use_crosses)
+    wide_columns, deep_columns = get_feature_columns(args.model_type, linear_use_crosses, deep_embedding_size_factor)
 
     
     runconfig = tf.contrib.learn.RunConfig()
@@ -462,6 +466,9 @@ def get_experiment_fn(args):
     num_table_shards = max(1, runconfig.num_ps_replicas * 3)
     num_partitions = max(1, 1 + cluster.num_tasks('worker') if cluster and
                          'worker' in cluster.jobs else 0)
+
+
+    deep_hidden_units = list([int(n) for n in args.deep_hidden_units.split(' ')])
     
 
     if args.model_type == WIDE:
@@ -476,10 +483,10 @@ def get_experiment_fn(args):
                                       )
     elif args.model_type == DEEP:
       estimator = tf.contrib.learn.DNNClassifier(
-          hidden_units=args.hidden_units,
+          hidden_units=deep_hidden_units,
           feature_columns=deep_columns,
           model_dir=output_dir,
-          dropout=0.1,
+          dropout=args.deep_dropout,
           optimizer=tf.train.ProximalAdagradOptimizer(
               learning_rate=args.deep_learning_rate,
               initial_accumulator_value=0.1,              
@@ -499,7 +506,7 @@ def get_experiment_fn(args):
                                       l1_regularization_strength=args.linear_l1_regularization,
                                       l2_regularization_strength=args.linear_l1_regularization),                                          
             dnn_feature_columns=deep_columns,
-            dnn_hidden_units=args.hidden_units,
+            dnn_hidden_units=deep_hidden_units,
             dnn_dropout=args.deep_dropout,
             dnn_optimizer=tf.train.ProximalAdagradOptimizer(
               learning_rate=args.deep_learning_rate,
@@ -523,7 +530,7 @@ def get_experiment_fn(args):
             default_output_alternative_key=None))
 
     train_input_fn = get_transformed_reader_input_fn(
-        transformed_metadata, args.train_data_paths, args.batch_size,
+        transformed_metadata, args.train_data_paths, args.train_batch_size,
         tf.contrib.learn.ModeKeys.TRAIN)
 
     eval_input_fn = get_transformed_reader_input_fn(
@@ -545,7 +552,7 @@ def get_experiment_fn(args):
       min_eval_frequency = None
 
       #Adding a metric that compute the MAP over the predictions, considering leaked clicks
-      eval_metrics['MAP with Leak'] = metric_spec.MetricSpec(
+      eval_metrics['MAP_with_Leaked_Clicks'] = metric_spec.MetricSpec(
                                         metric_fn=map_with_leak_custom_metric,
                                         prediction_key="logistic", 
                                         weight_key=DISPLAY_ID_AND_IS_LEAK_ENCODED_COLUMN
@@ -557,7 +564,7 @@ def get_experiment_fn(args):
     return tf.contrib.learn.Experiment(
         estimator=estimator,
         train_steps=(args.train_steps or
-                     args.num_epochs * train_set_size // args.batch_size),
+                     args.num_epochs * train_set_size // args.train_batch_size),
         eval_steps = eval_steps,        
         train_input_fn=train_input_fn,
         eval_input_fn=eval_input_fn,    

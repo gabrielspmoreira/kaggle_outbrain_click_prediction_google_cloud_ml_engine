@@ -51,7 +51,7 @@ pip install --upgrade protobuf==3.1.0
 
 1. Upload [Outbrain competition database (CSV files)](https://www.kaggle.com/c/outbrain-click-prediction) to a bucket on [Google Cloud Storage](https://cloud.google.com/storage/)
 2. Start a Dataproc cluster with Jupyter setup on master node, running below commands. I will create a cluster with 1 master node and 8 worker nodes, suitable to run the preprocessing Jupyter notebook in less than 3 hours. The startup script installs a [Jupyter Notebook](https://cloud.google.com/dataproc/docs/tutorials/jupyter-notebook) on master node.
-```
+```bash
 cd spark/scripts    
 ./dataproc_setup.sh ciandt-cognitive-sandbox outbrain-dataproc-cluster start
 ```
@@ -66,8 +66,9 @@ DATA_BUCKET_FOLDER = "gs://<GCS_BUCKET_NAME>/outbrain-click-prediction/data/"
 ```
 6. Open [Outbrain-Preprocessing.ipynb](https://github.com/gabrielspmoreira/kaggle_outbrain_click_prediction_google_cloud_ml_engine/blob/master/spark/preprocessing/Outbrain-Preprocessing.ipynb) notebook, and change the input and output buckets names, as you did in [Outbrain-UserProfiles.ipynb](https://github.com/gabrielspmoreira/kaggle_outbrain_click_prediction_google_cloud_ml_engine/blob/master/spark/preprocessing/Outbrain-UserProfiles.ipynb). If evaluation == True, the output CSVs will be a pre-processed partial train set and the validation set, otherwise, the output will be the pre-processed full train set and the test set (with no ground truth for submission to the competition). Then, run the notebook to perform the pre-processing and export the merged CSV files with engineered features.
 7. Stop Dataproc cluster with the following command:  
+```bash
 ./dataproc_setup.sh ciandt-cognitive-sandbox outbrain-dataproc-cluster stop
-
+```
 
 ## 2 - Data Transformation on Dataflow
 
@@ -125,7 +126,7 @@ Run the code as below:
 
 To train the linear model:
 
-```
+```bash
 python -m trainer.task \
       --model_type wide \
       --linear_l1_regularization 0.1 \
@@ -146,7 +147,7 @@ python -m trainer.task \
 
 To train the deep model:
 
-```
+```bash
 python -m trainer.task \      
       --model_type deep \
       --deep_l1_regularization 1 \
@@ -176,14 +177,14 @@ multiple workers and parameter servers (ml-engine-config-small.yaml).
 
 Set environment variables:
 
-```
+```bash
 GCS_MODEL_OUTPUT_PATH=$GCS_PATH/model_output
 ```
 
 
 To train the linear model:
 
-```
+```bash
 JOB_ID="out_wide_n_deep_${USER}_$(date +%Y%m%d_%H%M%S)"
 gcloud ml-engine jobs submit training "$JOB_ID" \
   --module-name trainer.task \
@@ -215,7 +216,7 @@ To train the linear model without feature interactions, add the option `--ignore
 
 To train the deep model:
 
-```
+```bash
 JOB_ID="out_wide_n_deep_${USER}_$(date +%Y%m%d_%H%M%S)"
 gcloud ml-engine jobs submit training "$JOB_ID" \
   --module-name trainer.task \
@@ -248,7 +249,7 @@ gcloud ml-engine jobs submit training "$JOB_ID" \
 To train Wide & Deep model:
 
 
-```
+```bash
 JOB_ID="out_wide_n_deep_${USER}_$(date +%Y%m%d_%H%M%S)"
 gcloud ml-engine jobs submit training "$JOB_ID" \
   --module-name trainer.task \
@@ -287,9 +288,9 @@ When using the [distributed configuration](config-small.yaml), the linear model
 may take as little as 5h30 minutes to train, and the deep model should finish in
 around X minutes, and Wide & Deep model takes about 9h. You can run Tensorboard and monitor training progress:
 
-´´´
+```bash
 tensorboard --logdir ${GCS_OUTPUT_DIR}/${JOB_ID}
-´´´
+```
 
 
 ### HyperTune
@@ -299,7 +300,7 @@ Google Cloud Machine Learning Engine features a smart hyperparameter tuning algo
 The ml-engine-config-hypertune.yaml config file is an example of how to setup a Hyperparameter Tuning job on Cloud ML. The file contains settings like how many trials will be attempted, which hyperparameters will be tuned and the possible values.  
 Thus, the goal this example tuning was to MAXIMIZE the metric MAP_with_Leaked_Clicks, with a maximum of 30 trials, using a sample of 1M rows for training and 100K for evaluation (and optimization of automatic tuning). 
 
-´´´
+```bash
 JOB_ID="out_wide_n_deep_${USER}_$(date +%Y%m%d_%H%M%S)"
 gcloud ml-engine jobs submit training "$JOB_ID" \
   --module-name trainer.task \
@@ -321,11 +322,11 @@ gcloud ml-engine jobs submit training "$JOB_ID" \
   --transform_savedmodel "${GCS_PREPROC_PATH}/transform_fn" \
   --eval_data_paths "${GCS_PREPROC_PATH}/features_eval*" \
   --train_data_paths "${GCS_PREPROC_PATH}/features_train*"
-´´´
+```
 
 This HyperTune job should take about 8h with this cluster configuration and output a JSON like below, with the 30 trials and respective hyperparameters values, sorted by the more accurate models.
 
-´´´
+```bash
 {
   "completedTrialCount": "30",
   "trials": [
@@ -387,4 +388,4 @@ This HyperTune job should take about 8h with this cluster configuration and outp
       }
     },
     ...
-´´´   
+``` 

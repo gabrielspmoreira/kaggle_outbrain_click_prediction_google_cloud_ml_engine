@@ -1,6 +1,6 @@
 ## A Wide & Deep model deployed on Google Cloud ML Engine for Kaggle's Outbrain Click Prediction competition
 
-I've jumped into [Outbrain Click Prediction](https://www.kaggle.com/c/outbrain-click-prediction) Kaggle competition Oct. 2016. After more than three months hicking to the top, I ended up in the 19th position (top 2%).  
+I've jumped into [Outbrain Click Prediction](https://www.kaggle.com/c/outbrain-click-prediction) Kaggle competition by Oct. 2016. After more than three months climbing to the top, I ended up in the *19th position (top 2%)*.  
 I've published that journey in this [post series](https://medium.com/unstructured/how-feature-engineering-can-help-you-do-well-in-a-kaggle-competition-part-i-9cc9a883514d), explaining how I got such a result, mainly due to Feature Engineering techniques and Google Cloud Platform.
 
 After the competition, I ran some experiments using [Tensorflow](http://tensorflow.org/), [Google Cloud Machine Learning Engine](https://cloud.google.com/products/machine-learning/) and [Dataflow](https://cloud.google.com/dataflow/) on competition data, to see the results I could get with such tech stack.
@@ -8,17 +8,17 @@ After the competition, I ran some experiments using [Tensorflow](http://tensorfl
 The main motivation was a promissing technique published by Google Research named [Wide & Deep Learning](https://research.googleblog.com/2016/06/wide-deep-learning-better-together-with.html), which is very suitable for problems with sparse inputs (categorical features with large number of possible values), like click prediction and fraud detection. It trains together a scalable linear model (for memorization) and a deep neural network (for generalization).  
 This PoC was based on a [Google's example](https://cloud.google.com/blog/big-data/2017/02/using-google-cloud-machine-learning-to-predict-clicks-at-scale) of this technique using [Tensorflow](http://tensorflow.org/), [Google Cloud Machine Learning Engine](https://cloud.google.com/products/machine-learning/), and [Dataflow](https://cloud.google.com/dataflow/).
 
-This PoC consists of three components (steps):
+This PoC consists of a pipeline with three steps:
 
-### 1 - Data Munging and Feature Engineering on Dataproc (Spark)
+### 1 - Data Munging and Feature Engineering on Google Dataproc (Spark)
 
 As first step, we used Spark SQL deployed on [Google Dataproc](https://cloud.google.com/dataproc/) to join the large relational database provided by Outbrain, engineer new features, and split train and validation sets, as described in this [post series](https://medium.com/unstructured/how-feature-engineering-can-help-you-do-well-in-a-kaggle-competition-part-i-9cc9a883514d). Finally, the final DataFrame is exported to CSV files to [Google Cloud Storage](https://cloud.google.com/storage/), for usage in the next steps. The Jupyter notebooks used for this task are available under [preprocessing](https://github.com/gabrielspmoreira/kaggle_outbrain_click_prediction_google_cloud_ml_engine/blob/master/spark/preprocessing/) folder .
 
-### 2 - Data Transformation on Dataflow (Apache Beam)
+### 2 - Data Transformation on Google Dataflow (Apache Beam)
 
 The second step was an Apache Beam script run on [Google Dataflow](https://cloud.google.com/dataflow/) to transform the exported CSVs into Tensorflow [Example](https://github.com/tensorflow/tensorflow/blob/master/tensorflow/core/example/example.proto) format. Some feature engineering techniques, like binning and log transformation of numerical features was also performed at this step, using [tf.Transform](https://research.googleblog.com/2017/02/preprocessing-for-machine-learning-with.html).
 
-### 3 - Model Training and Evaluation on Machine Learning Engine (Tensorflow)
+### 3 - Model Training and Evaluation on Google Machine Learning Engine (Tensorflow)
 
 The third step was the set up of a [Wide & Deep Learning model](https://research.googleblog.com/2016/06/wide-deep-learning-better-together-with.html) using Tensorflow ([DNNLinearCombinedClassifier](https://www.tensorflow.org/api_docs/python/tf/contrib/learn/DNNLinearCombinedClassifier)), and deployment on Google Machine Learning Engine. 
 
@@ -407,4 +407,6 @@ This HyperTune job should take about 8h to run the 30 trials with this cluster c
       }
     },
     ...
+
+  }
 ``` 

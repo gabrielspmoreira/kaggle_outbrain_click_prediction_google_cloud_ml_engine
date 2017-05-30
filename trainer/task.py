@@ -147,7 +147,7 @@ def get_feature_columns(model_type, linear_use_crosses, embedding_size_factor):
   event_platform = tf.contrib.layers.sparse_column_with_integerized_feature("event_platform", bucket_size=4, dtype=tf.int64, combiner="sum") #1-3
   traffic_source = tf.contrib.layers.sparse_column_with_integerized_feature("traffic_source", bucket_size=4, dtype=tf.int64, combiner="sum") #1-3
 
-  #TODO: Campaign is usually an important feature. Add this feature in the next feature engineering round
+  #TODO: Campaign (10803 unique values) is usually an important feature. Add this feature in the next feature engineering round
 
   if 'wide' in model_type:
 

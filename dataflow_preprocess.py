@@ -155,7 +155,7 @@ def preprocess(pipeline, training_data, eval_data, predict_data, output_dir,
   train_coder = coders.ExampleProtoCoder(train_metadata.schema)
   _ = (train_dataset
        | 'SerializeTrainExamples' >> beam.Map(train_coder.encode)
-       | 'ShuffleTraining' >> _Shuffle()  # pylint: disable=no-value-for-parameter
+       #| 'ShuffleTraining' >> _Shuffle()  # pylint: disable=no-value-for-parameter
        | 'WriteTraining'
        >> beam.io.WriteToTFRecord(
            os.path.join(output_dir,
